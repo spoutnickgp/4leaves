@@ -1,6 +1,7 @@
 import os
 import time
 import warnings
+import pathlib
 
 import lightgbm as lgb
 from lleaves import lleaves
@@ -12,17 +13,19 @@ from sklearn.metrics import confusion_matrix
 import pandas as pd
 import seaborn as sns
 
+NB_ITERATIONS = 10000
+
+DATA_FOLDER = os.path.join(pathlib.Path(__file__).parent.parent.resolve(), "data")
+MODEL_FOLDER = os.path.join(pathlib.Path(__file__).parent.parent.resolve(), "model")
+DATA_FILE = os.path.join(DATA_FOLDER, 'Breast_cancer_data.csv')
+
 warnings.filterwarnings("ignore")
 
-for dirname, _, filenames in os.walk('/data'):
-    for filename in filenames:
-        print(os.path.join(dirname, filename))
+df = pd.read_csv(DATA_FILE)
 
-df = pd.read_csv('./data/Breast_cancer_data.csv')
+print(df.info())
 
-df.info()
-
-df['diagnosis'].value_counts()
+print(df['diagnosis'].value_counts())
 
 X = df[['mean_radius', 'mean_texture', 'mean_perimeter', 'mean_area', 'mean_smoothness']]
 y = df['diagnosis']
@@ -44,6 +47,7 @@ print('Training set score: {:.4f}'.format(clf.score(X_train, y_train)))
 
 print('Test set score: {:.4f}'.format(clf.score(X_test, y_test)))
 
+# Cnfusion Matrix
 cm = confusion_matrix(y_test, y_pred)
 print('Confusion matrix\n\n', cm)
 print('\nTrue Positives(TP) = ', cm[0, 0])
@@ -57,20 +61,22 @@ cm_matrix = pd.DataFrame(data=cm,
 
 sns.heatmap(cm_matrix, annot=True, fmt='d', cmap='YlGnBu')
 
-clf.booster_.save_model("model/trained.txt")
+clf.booster_.save_model(os.path.join(MODEL_FOLDER, "lgbm.txt"))
 
-llvm_model = lleaves.Model("model/trained.txt")
+llvm_model = lleaves.Model(os.path.join(MODEL_FOLDER, "lgbm.txt"))
 
-llvm_model.compile()
+llvm_model.compile(cache=os.path.join(MODEL_FOLDER, "lleaves.o"))
 
 start = time.time()
-for i in range(0, 10000):
-    y_test_again = clf.predict(X_test)
+for i in range(0, NB_ITERATIONS):
+    y_test_again = clf.predict(X_train)
 end = time.time()
 print(end - start)
 
 start = time.time()
-for i in range(0, 10000):
-    llvm_y_test = llvm_model.predict(X_test)
+for i in range(0, NB_ITERATIONS):
+    llvm_y_test = llvm_model.predict(X_train)
 end = time.time()
 print(end - start)
+
+print(llvm_model.model_file)

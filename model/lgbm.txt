@@ -1930,7 +1930,7 @@ parameters:
 [num_iterations: 100]
 [learning_rate: 0.1]
 [num_leaves: 31]
-[num_threads: 8]
+[num_threads: 10]
 [seed: 0]
 [deterministic: 0]
 [force_col_wise: 0]
